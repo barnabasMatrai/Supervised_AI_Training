@@ -9,6 +9,8 @@ print(df.columns)
 print(df.dtypes)
 print(df.head())
 
+df = df.drop(columns=["duration_ms"])
+
 # class_counts = df['popularity'].value_counts()
 
 # class_counts.plot(kind='bar')
@@ -18,5 +20,5 @@ print(df.head())
 # plt.ylabel("Count")
 # plt.show()
 
-df.boxplot(column="danceability")
+df.boxplot()
 plt.show()
