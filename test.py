@@ -65,16 +65,7 @@ print(f"\nTotal unique music genres: {len(unique_genres)}")
 # 2. ADVANCED EDA
 # ==========================================
 
-# class_counts = df['popularity'].value_counts()
-
-# class_counts.plot(kind='bar')
-
-# plt.title("Class Distribution")
-# plt.xlabel("Class")
-# plt.ylabel("Count")
-# plt.show()
-
-print("\Generating Correlation Map")
+print("Generating Correlation Map")
 # We select only numerical data (essential for correlation)
 df_numeric = df.select_dtypes(include=[np.number])
 
@@ -85,7 +76,7 @@ plt.title("Correlation Matrix")
 plt.tight_layout()
 plt.show()
 
-print("\Generating Boxplot... (Close the window to continue)")
+print("Generating Boxplot... (Close the window to continue)")
 plt.figure(figsize=(15, 8))
 df_numeric.boxplot()
 plt.xticks(rotation=45)
@@ -182,3 +173,41 @@ plt.tight_layout()
 plt.show()
 
 print("\n=== SCRIPT FINISHED SUCCESSFULLY ===")
+
+# df.boxplot()
+# plt.show()
+
+X = df['loudness'].values.reshape(-1, 1)
+y = df['energy'].values
+
+model = LinearRegression()
+model.fit(X, y)
+
+# predictions
+y_pred = model.predict(X)
+y_pred = np.clip(y_pred, 0, 1)
+
+# mean squared error
+mse = np.mean((y - y_pred) ** 2)
+print("Mean Squared Error:", mse)
+
+# visualise the residuals
+
+plt.figure(figsize=(8, 6))
+
+# true values (blue circles)
+plt.scatter(X, y, color='blue', label='True values')
+
+# predicted values (red x)
+plt.scatter(X, y_pred, color='red', marker='x', label='Predictions')
+
+# residual lines (green)
+# for i in range(len(X)):
+#     plt.plot([X[i], X[i]], [y[i], y_pred[i]], color='green')
+
+plt.xlabel('Loudness')
+plt.ylabel('Energy')
+plt.legend()
+plt.title('Linear Regression with Residuals')
+
+plt.show()
