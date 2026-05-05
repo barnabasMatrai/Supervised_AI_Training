@@ -72,6 +72,7 @@ def manage_missing_values(df):
 
     return df_cleaned
 
+<<<<<<< HEAD
 def check_duplicates(df):
     """Checks for duplicate track_ids and removes them to ensure data integrity."""
     # We check specifically for 'track_id' as it should be the unique identifier
@@ -112,9 +113,34 @@ def check_duplicates(df):
     
     print("-----------------------------------")
     return df
+=======
+# ==========================================
+# 3. SUMMARY STATISTICS
+# ==========================================
+def summary_statistics(df):
+    print("\n--- SUMMARY STATISTICS (Numeric Columns) ---")
+    
+    df_numeric = df.select_dtypes(include=[np.number])
+    
+    stats = pd.DataFrame({
+        'mean':     df_numeric.mean(),
+        'median':   df_numeric.median(),
+        'q25':      df_numeric.quantile(0.25),
+        'q75':      df_numeric.quantile(0.75),
+        'variance': df_numeric.var(),
+        'std_dev':  df_numeric.std(),
+        'mode':     df_numeric.mode().iloc[0],  # first mode if multiple
+        'missing':  df_numeric.isna().sum(),
+        'unique':   df_numeric.nunique(),
+    })
+    
+    print(stats.to_string())
+    print("\n")
+    return stats
+>>>>>>> 58c6701ca0b878c511c9aed2fe3a8215e975cf3a
 
 # ==========================================
-# 3. BASIC EXPLORATION
+# 4. BASIC EXPLORATION
 # ==========================================
 def explore_genres(df):
     print("\nUnique music genres:")
@@ -123,7 +149,7 @@ def explore_genres(df):
     print(f"\nTotal unique music genres: {len(unique_genres)}")
 
 # ==========================================
-# 4. VISUALIZATION (EDA)
+# 5. VISUALIZATION (EDA)
 # ==========================================
 def plot_correlation(df):
     print("Generating Correlation Map...")
@@ -148,9 +174,60 @@ def plot_boxplots(df_numeric):
     plt.tight_layout()
     plt.show()
 
+def plot_histograms(df_numeric):
+    print("Generating Histograms...")
+    df_numeric.hist(figsize=(15, 10), bins=30, edgecolor='black')
+    plt.suptitle("Histograms of Numeric Features", fontsize=16)
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_density(df_numeric):
+    print("Generating Density Plots...")
+    cols = ['popularity', 'energy', 'loudness', 'danceability', 'valence', 'tempo']
+    
+    fig, axes = plt.subplots(2, 3, figsize=(15, 8))
+    axes = axes.flatten()
+    
+    for i, col in enumerate(cols):
+        df_numeric[col].plot(kind='kde', ax=axes[i], color='steelblue')
+        axes[i].set_title(f'Density: {col}')
+        axes[i].set_xlabel(col)
+    
+    plt.suptitle("Density Plots", fontsize=16)
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_scatter(df):
+    print("Generating Scatter Plots...")
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    
+    # Energy vs Loudness
+    axes[0].scatter(df['loudness'], df['energy'], alpha=0.3, color='steelblue')
+    axes[0].set_xlabel('Loudness')
+    axes[0].set_ylabel('Energy')
+    axes[0].set_title('Loudness vs Energy')
+    
+    # Danceability vs Popularity
+    axes[1].scatter(df['danceability'], df['popularity'], alpha=0.3, color='coral')
+    axes[1].set_xlabel('Danceability')
+    axes[1].set_ylabel('Popularity')
+    axes[1].set_title('Danceability vs Popularity')
+    
+    # Tempo vs Energy
+    axes[2].scatter(df['tempo'], df['energy'], alpha=0.3, color='mediumseagreen')
+    axes[2].set_xlabel('Tempo')
+    axes[2].set_ylabel('Energy')
+    axes[2].set_title('Tempo vs Energy')
+    
+    plt.suptitle("Scatter Plots", fontsize=16)
+    plt.tight_layout()
+    plt.show()
+
 
 # ==========================================
-# 5. DATA PREPARATION
+# 6. DATA PREPARATION
 # ==========================================
 def prepare_model_data(df_numeric):
     print("\n--- DATA PREPARATION ---")
@@ -172,7 +249,7 @@ def prepare_model_data(df_numeric):
 
 
 # ==========================================
-# 6. MODELS
+# 7. MODELS
 # ==========================================
 def train_linear_regression(X_train, X_test, y_train, y_test):
     print("\n--- TRAINING MODEL: LINEAR REGRESSION ---")
@@ -220,7 +297,7 @@ def train_decision_tree(X_train, X_test, y_train, y_test):
 
 
 # ==========================================
-# 7. COMPARISON
+# 8. COMPARISON
 # ==========================================
 def compare_models(r2_lr, mse_lr, r2_tree, mse_tree):
     print("\n==========================================")
@@ -240,7 +317,7 @@ def compare_models(r2_lr, mse_lr, r2_tree, mse_tree):
 
 
 # ==========================================
-# 8. FEATURE IMPORTANCE
+# 9. FEATURE IMPORTANCE
 # ==========================================
 def plot_feature_importance(model, X):
     print("\nGenerating Feature Importance Chart...")
@@ -258,7 +335,7 @@ def plot_feature_importance(model, X):
 
 
 # ==========================================
-# 9. EXTRA ANALYSIS
+# 10. EXTRA ANALYSIS
 # ==========================================
 def loudness_energy_regression(df):
     print("\n--- EXTRA: Loudness vs Energy ---")
@@ -285,12 +362,21 @@ def loudness_energy_regression(df):
     plt.title('Linear Regression: Loudness vs Energy')
     plt.show()
 
+def plot_histogram(df, column):
+    plt.figure(figsize=(8, 5))
+    plt.hist(df[column], bins=30)
+    plt.title(f"Histogram of {column}")
+    plt.xlabel(column)
+    plt.ylabel("Frequency")
+    plt.tight_layout()
+    plt.show()
+
 
 # ==========================================
 # MAIN PIPELINE
 # ==========================================
 def main():
-    df = load_data(os.getcwd() + "\\dataset.csv")
+    df = load_data(os.getcwd() + "/dataset.csv")
 
     print("\n Checking for duplicate Track IDs...")
     df = check_duplicates(df)
@@ -303,6 +389,13 @@ def main():
 
     print("\nChecking for missing values after cleaning...")
     df = manage_missing_values(df)
+
+    summary_statistics(df)  
+    
+    print(df['popularity'].value_counts().head(10))
+    df['popularity'] = df['popularity'].replace(0, np.nan)
+    df = df.dropna(subset=['popularity'])
+    plot_histogram(df, "popularity")
 
     """explore_genres(df)
 
