@@ -320,6 +320,15 @@ def loudness_energy_regression(df):
     plt.title('Linear Regression: Loudness vs Energy')
     plt.show()
 
+def plot_histogram(df, column):
+    plt.figure(figsize=(8, 5))
+    plt.hist(df[column], bins=30)
+    plt.title(f"Histogram of {column}")
+    plt.xlabel(column)
+    plt.ylabel("Frequency")
+    plt.tight_layout()
+    plt.show()
+
 
 # ==========================================
 # MAIN PIPELINE
@@ -338,6 +347,11 @@ def main():
 
     summary_statistics(df)  
     
+    print(df['popularity'].value_counts().head(10))
+    df['popularity'] = df['popularity'].replace(0, np.nan)
+    df = df.dropna(subset=['popularity'])
+    plot_histogram(df, "popularity")
+
     """explore_genres(df)
 
     df_numeric = plot_correlation(df)
