@@ -41,7 +41,46 @@ def manage_missing_values(df):
     
     return df_cleaned
 
+def check_duplicates(df):
+    """Checks for duplicate track_ids and removes them to ensure data integrity."""
+    # We check specifically for 'track_id' as it should be the unique identifier
+    duplicate_count = df.duplicated(subset=['track_id']).sum()
+    
+    if duplicate_count > 0:
+        print(f"Warning: Found {duplicate_count} duplicate track IDs.")
+        # Keeping the first occurrence and removing the rest
 
+        top_duplicates = df['track_id'].value_counts().head(3)
+        print(f"Most frequent track IDs:\n{top_duplicates}")
+
+        most_frequent_id = df['track_id'].value_counts().index[0]
+        num_occurrences = df['track_id'].value_counts().iloc[0]
+        print(f"\nInvestigating the most repeated track_id: '{most_frequent_id}' (appears {num_occurrences} times).")
+        
+        # Filter the dataframe to look ONLY at this specific track
+        example_df = df[df['track_id'] == most_frequent_id]
+        
+        # Find and print the columns that have differing values across these rows
+        print("Columns with DIFFERENT values for this specific track:")
+        differing_cols = False
+
+        for col in example_df.columns:
+            # If a column has more than 1 unique value, it means the data changes!
+            if example_df[col].nunique(dropna=False) > 1:
+                differing_cols = True
+                unique_vals = example_df[col].unique()
+                print(f"  -> {col}: {unique_vals}")
+
+        if not differing_cols:
+            print("  -> (No differing columns found. The rows are 100% exact clones).")
+
+        df = df.drop_duplicates(subset=['track_id'], keep='first')
+        print(f"Duplicates removed. Remaining rows: {len(df)}")
+    else:
+        print("Success: No duplicate track IDs found.")
+    
+    print("-----------------------------------")
+    return df
 
 df = pd.read_csv(os.getcwd() + "\\dataset.csv")
 
@@ -49,6 +88,9 @@ print(df.shape)
 print(df.columns)
 print(df.dtypes)
 print(df.head())
+
+print("\n Checking for duplicate Track IDs...")
+df = check_duplicates(df)
 
 print("Preparing columns...")
 df = prepare_columns(df)
