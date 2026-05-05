@@ -47,9 +47,27 @@ def manage_missing_values(df):
         print("No missing values found.")
 
     initial_rows = len(df)
+
+    # Rows that will be deleted
+    deleted_rows = df[df.isna().any(axis=1)]
     df_cleaned = df.dropna()
 
-    print(f"Deleted rows: {initial_rows - len(df_cleaned)}")
+    deleted_count = initial_rows - len(df_cleaned)
+    print(f"Deleted rows: {deleted_count}")
+
+    if deleted_count > 0:
+        print("\nDeleted rows (showing only missing fields):")
+
+        for idx, row in deleted_rows.iterrows():
+            missing_cols = row[row.isna()].index.tolist()
+            missing_info = {col: None for col in missing_cols}
+
+            print(f"track_id: {row['track_id']}")
+            print(f"missing: {missing_info}")
+            print("-" * 40)
+    else:
+        print("No rows were deleted.")
+
     print("-----------------------------------")
 
     return df_cleaned
@@ -235,13 +253,16 @@ def loudness_energy_regression(df):
 def main():
     df = load_data(os.getcwd() + "\\dataset.csv")
 
+    print("\nChecking for missing values before preparing the columns...")
+    df = manage_missing_values(df)
+
     print("\nPreparing columns...")
     df = prepare_columns(df)
 
-    print("\nChecking for missing values...")
+    print("\nChecking for missing values after cleaning...")
     df = manage_missing_values(df)
 
-    explore_genres(df)
+    """explore_genres(df)
 
     df_numeric = plot_correlation(df)
     plot_boxplots(df_numeric)
@@ -257,7 +278,7 @@ def main():
 
     loudness_energy_regression(df)
 
-    print("\n=== SCRIPT FINISHED SUCCESSFULLY ===")
+    print("\n=== SCRIPT FINISHED SUCCESSFULLY ===")"""
 
 
 if __name__ == "__main__":
