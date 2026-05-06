@@ -1,3 +1,5 @@
+from xml.parsers.expat import model
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import os
@@ -274,8 +276,40 @@ def train_linear_regression(X_train, X_test, y_train, y_test):
 
     return model, r2, mse
 
+def linear_regression(df, feature_col, target_col):
+    print(f"\n--- SIMPLE LINEAR REGRESSION: {feature_col} vs {target_col} ---")
 
-def train_decision_tree(X_train, X_test, y_train, y_test):
+    X = df[feature_col].values.reshape(-1, 1)
+    y = df[target_col].values
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    model = LinearRegression()
+    model.fit(X_train, y_train  )
+
+    y_pred = model.predict(X_test)
+
+    mse = mean_squared_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
+    print(f"Mean Squared Error (MSE): {mse:.4f}")
+    print(f"R-squared (R2): {r2:.4f}")
+
+    plt.figure(figsize=(10, 6))
+    
+    plt.scatter(X_test, y_test, alpha=0.3, color='blue', label='True Values (Test Data)')
+    
+    X_line = np.array([[X_test.min()], [X_test.max()]])
+    y_line = model.predict(X_line)
+    plt.plot(X_line, y_line, color='red', linewidth=3, label='Regression Line')
+
+    plt.xlabel(feature_col)
+    plt.ylabel(target_col
+    )
+    plt.legend()
+    plt.title(f'Linear Regression: {feature_col} vs {target_col}')
+    plt.show()
+
+"""def train_decision_tree(X_train, X_test, y_train, y_test):
     print("\n--- TRAINING MODEL: DECISION TREE ---")
 
     base_tree = DecisionTreeRegressor(random_state=42)
@@ -303,7 +337,7 @@ def train_decision_tree(X_train, X_test, y_train, y_test):
     r2 = r2_score(y_test, predictions)
     mse = mean_squared_error(y_test, predictions)
 
-    return best_tree, r2, mse
+    return best_tree, r2, mse"""
 
 # ==========================================
 # 7a. CROSS VALIDATION (NEW)
@@ -359,30 +393,6 @@ def plot_feature_importance(model, X):
 # ==========================================
 # 10. EXTRA ANALYSIS
 # ==========================================
-def loudness_energy_regression(df):
-    print("\n--- EXTRA: Loudness vs Energy ---")
-
-    X = df['loudness'].values.reshape(-1, 1)
-    y = df['energy'].values
-
-    model = LinearRegression()
-    model.fit(X, y)
-
-    y_pred = model.predict(X)
-    y_pred = np.clip(y_pred, 0, 1)
-
-    mse = np.mean((y - y_pred) ** 2)
-    print("Mean Squared Error:", mse)
-
-    plt.figure(figsize=(8, 6))
-    plt.scatter(X, y, label='True values')
-    plt.scatter(X, y_pred, marker='x', label='Predictions')
-
-    plt.xlabel('Loudness')
-    plt.ylabel('Energy')
-    plt.legend()
-    plt.title('Linear Regression: Loudness vs Energy')
-    plt.show()
 
 def plot_histogram(df, column):
     plt.figure(figsize=(8, 5))
@@ -426,30 +436,19 @@ def main():
 
     X, y, X_train, X_test, y_train, y_test = prepare_model_data(df_numeric)
 
-    # -----------------------------------
+# -----------------------------------
     # CROSS VALIDATION (NEW)
     # -----------------------------------
     evaluate_model_cv(LinearRegression(), X, y, "Linear Regression")
-    evaluate_model_cv(DecisionTreeRegressor(), X, y, "Decision Tree")
+    
+    model_energy = linear_regression(df_numeric, 'loudness', 'energy')
+    model_popularity = linear_regression(df_numeric, 'acousticness', 'popularity')
 
-    lr_model, r2_lr, mse_lr = train_linear_regression(X_train, X_test, y_train, y_test)
-    tree_model, r2_tree, mse_tree = train_decision_tree(X_train, X_test, y_train, y_test)
+    #tree_model, r2_tree, mse_tree = train_decision_tree(X_train, X_test, y_train, y_test)
 
-    print("\n==========================================")
-    print("🏆 FINAL SHOWDOWN: PREDICTING POPULARITY 🏆")
-    print("==========================================")
+    #compare_models(r2_lr, mse_lr, r2_tree, mse_tree)
 
-    print("1. LINEAR REGRESSION")
-    print(f"   - R2: {r2_lr:.4f}")
-    print(f"   - MSE: {mse_lr:.2f}")
-
-    print("\n2. DECISION TREE")
-    print(f"   - R2: {r2_tree:.4f}")
-    print(f"   - MSE: {mse_tree:.2f}")
-
-    plot_feature_importance(tree_model, X)
-
-    loudness_energy_regression(df)
+    #plot_feature_importance(tree_model, X)
 
     print("\n=== SCRIPT FINISHED SUCCESSFULLY ===")
 
