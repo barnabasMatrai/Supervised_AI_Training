@@ -9,6 +9,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.model_selection import cross_val_score
 
 
 # ==========================================
@@ -72,7 +73,6 @@ def manage_missing_values(df):
 
     return df_cleaned
 
-<<<<<<< HEAD
 def check_duplicates(df):
     """Checks for duplicate track_ids and removes them to ensure data integrity."""
     # We check specifically for 'track_id' as it should be the unique identifier
@@ -113,7 +113,18 @@ def check_duplicates(df):
     
     print("-----------------------------------")
     return df
-=======
+
+# ==========================================
+# 2b. ENCODING (NEW)
+# ==========================================
+def encode_categorical(df):
+    df = df.copy()
+
+    if 'track_genre' in df.columns:
+        df = pd.get_dummies(df, columns=['track_genre'], drop_first=True)
+
+    return df
+
 # ==========================================
 # 3. SUMMARY STATISTICS
 # ==========================================
@@ -137,7 +148,6 @@ def summary_statistics(df):
     print(stats.to_string())
     print("\n")
     return stats
->>>>>>> 58c6701ca0b878c511c9aed2fe3a8215e975cf3a
 
 # ==========================================
 # 4. BASIC EXPLORATION
@@ -278,7 +288,7 @@ def train_decision_tree(X_train, X_test, y_train, y_test):
     grid_search = GridSearchCV(
         estimator=base_tree,
         param_grid=param_grid,
-        cv=3,
+        cv=2,
         scoring='neg_mean_squared_error',
         verbose=1
     )
@@ -295,6 +305,18 @@ def train_decision_tree(X_train, X_test, y_train, y_test):
 
     return best_tree, r2, mse
 
+# ==========================================
+# 7a. CROSS VALIDATION (NEW)
+# ==========================================
+def evaluate_model_cv(model, X, y, name):
+    print(f"\n--- CROSS VALIDATION: {name} ---")
+
+    scores = cross_val_score(model, X, y, cv=5, scoring='r2')
+
+    print(f"Scores: {scores}")
+    print(f"Mean R2: {scores.mean():.4f}")
+
+    return scores.mean()
 
 # ==========================================
 # 8. COMPARISON
@@ -386,6 +408,8 @@ def main():
 
     print("\nPreparing columns...")
     df = prepare_columns(df)
+    explore_genres(df)
+    df = encode_categorical(df)
 
     print("\nChecking for missing values after cleaning...")
     df = manage_missing_values(df)
@@ -397,23 +421,37 @@ def main():
     df = df.dropna(subset=['popularity'])
     plot_histogram(df, "popularity")
 
-    """explore_genres(df)
-
     df_numeric = plot_correlation(df)
     plot_boxplots(df_numeric)
 
     X, y, X_train, X_test, y_train, y_test = prepare_model_data(df_numeric)
 
+    # -----------------------------------
+    # CROSS VALIDATION (NEW)
+    # -----------------------------------
+    evaluate_model_cv(LinearRegression(), X, y, "Linear Regression")
+    evaluate_model_cv(DecisionTreeRegressor(), X, y, "Decision Tree")
+
     lr_model, r2_lr, mse_lr = train_linear_regression(X_train, X_test, y_train, y_test)
     tree_model, r2_tree, mse_tree = train_decision_tree(X_train, X_test, y_train, y_test)
 
-    compare_models(r2_lr, mse_lr, r2_tree, mse_tree)
+    print("\n==========================================")
+    print("🏆 FINAL SHOWDOWN: PREDICTING POPULARITY 🏆")
+    print("==========================================")
+
+    print("1. LINEAR REGRESSION")
+    print(f"   - R2: {r2_lr:.4f}")
+    print(f"   - MSE: {mse_lr:.2f}")
+
+    print("\n2. DECISION TREE")
+    print(f"   - R2: {r2_tree:.4f}")
+    print(f"   - MSE: {mse_tree:.2f}")
 
     plot_feature_importance(tree_model, X)
 
     loudness_energy_regression(df)
 
-    print("\n=== SCRIPT FINISHED SUCCESSFULLY ===")"""
+    print("\n=== SCRIPT FINISHED SUCCESSFULLY ===")
 
 
 if __name__ == "__main__":
