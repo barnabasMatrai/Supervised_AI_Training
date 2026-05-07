@@ -1,4 +1,3 @@
-from xml.parsers.expat import model
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -117,7 +116,7 @@ def check_duplicates(df):
     return df
 
 # ==========================================
-# 2b. ENCODING (NEW)
+# 2b. ENCODING
 # ==========================================
 def encode_categorical(df):
     df = df.copy()
@@ -161,7 +160,7 @@ def explore_genres(df):
     print(f"\nTotal unique music genres: {len(unique_genres)}")
 
 # ==========================================
-# 5. VISUALIZATION (EDA)
+# 5. VISUALIZATION
 # ==========================================
 def plot_correlation(df):
     print("Generating Correlation Map...")
@@ -237,6 +236,14 @@ def plot_scatter(df):
     plt.tight_layout()
     plt.show()
 
+def plot_histogram(df, column):
+    plt.figure(figsize=(8, 5))
+    plt.hist(df[column], bins=30)
+    plt.title(f"Histogram of {column}")
+    plt.xlabel(column)
+    plt.ylabel("Frequency")
+    plt.tight_layout()
+    plt.show()
 
 # ==========================================
 # 6. DATA PREPARATION
@@ -263,18 +270,6 @@ def prepare_model_data(df_numeric):
 # ==========================================
 # 7. MODELS
 # ==========================================
-def train_linear_regression(X_train, X_test, y_train, y_test):
-    print("\n--- TRAINING MODEL: LINEAR REGRESSION ---")
-
-    model = LinearRegression()
-    model.fit(X_train, y_train)
-
-    predictions = model.predict(X_test)
-
-    r2 = r2_score(y_test, predictions)
-    mse = mean_squared_error(y_test, predictions)
-
-    return model, r2, mse
 
 def linear_regression(df, feature_col, target_col):
     print(f"\n--- SIMPLE LINEAR REGRESSION: {feature_col} vs {target_col} ---")
@@ -308,22 +303,24 @@ def linear_regression(df, feature_col, target_col):
     plt.legend()
     plt.title(f'Linear Regression: {feature_col} vs {target_col}')
     plt.show()
+    return model, r2, mse
 
-"""def train_decision_tree(X_train, X_test, y_train, y_test):
+def train_decision_tree(X_train, X_test, y_train, y_test):
     print("\n--- TRAINING MODEL: DECISION TREE ---")
 
     base_tree = DecisionTreeRegressor(random_state=42)
 
     param_grid = {
-        'max_depth': [5, 10, 15],
-        'min_samples_split': [10, 50, 100]
+        'max_depth': [5, 10, 15, 20],
+        'min_samples_split': [10, 50, 100],
+        'min_samples_leaf': [10, 20, 50]
     }
 
     grid_search = GridSearchCV(
         estimator=base_tree,
         param_grid=param_grid,
-        cv=2,
-        scoring='neg_mean_squared_error',
+        cv=3,
+        scoring='r2',
         verbose=1
     )
 
@@ -337,10 +334,12 @@ def linear_regression(df, feature_col, target_col):
     r2 = r2_score(y_test, predictions)
     mse = mean_squared_error(y_test, predictions)
 
-    return best_tree, r2, mse"""
+    print(f"Decision Tree R-squared (R2): {r2:.4f}")
+    print(f"Decision Tree Mean Squared Error (MSE): {mse:.4f}")
+    return best_tree, r2, mse
 
 # ==========================================
-# 7a. CROSS VALIDATION (NEW)
+# 7. CROSS VALIDATION
 # ==========================================
 def evaluate_model_cv(model, X, y, name):
     print(f"\n--- CROSS VALIDATION: {name} ---")
@@ -378,31 +377,19 @@ def compare_models(r2_lr, mse_lr, r2_tree, mse_tree):
 def plot_feature_importance(model, X):
     print("\nGenerating Feature Importance Chart...")
 
-    importance_df = pd.DataFrame({
-        'Feature': X.columns,
-        'Importance': model.feature_importances_
-    }).sort_values(by='Importance', ascending=False)
+    importances = model.feature_importances_
+    feature_names = X.columns
 
-    plt.figure(figsize=(10, 6))
-    sns.barplot(data=importance_df, x='Importance', y='Feature', palette='viridis')
+    feature_importance_df = pd.DataFrame({
+        'Feature': feature_names,
+        'Importance': importances
+    }).sort_values(by='Importance', ascending=False)
+    
+    plt.figure(figsize=(10, 8))
+    sns.barplot(data=feature_importance_df, x='Importance', y='Feature', palette='viridis')
     plt.title("Feature Importance")
     plt.tight_layout()
     plt.show()
-
-
-# ==========================================
-# 10. EXTRA ANALYSIS
-# ==========================================
-
-def plot_histogram(df, column):
-    plt.figure(figsize=(8, 5))
-    plt.hist(df[column], bins=30)
-    plt.title(f"Histogram of {column}")
-    plt.xlabel(column)
-    plt.ylabel("Frequency")
-    plt.tight_layout()
-    plt.show()
-
 
 # ==========================================
 # MAIN PIPELINE
@@ -416,11 +403,11 @@ def main():
     print("\nChecking for missing values before preparing the columns...")
     df = manage_missing_values(df)
 
+    explore_genres(df)
+
     print("\nPreparing columns...")
     df = prepare_columns(df)
-    explore_genres(df)
-    df = encode_categorical(df)
-
+    
     print("\nChecking for missing values after cleaning...")
     df = manage_missing_values(df)
 
@@ -429,30 +416,30 @@ def main():
     print(df['popularity'].value_counts().head(10))
     df['popularity'] = df['popularity'].replace(0, np.nan)
     df = df.dropna(subset=['popularity'])
-    plot_histogram(df, "popularity")
 
-    df_numeric = plot_correlation(df)
+    df_numeric = df.select_dtypes(include=[np.number])
+    plot_correlation(df_numeric)
     plot_boxplots(df_numeric)
     plot_histograms(df_numeric)
+    plot_histogram(df, "popularity")
     plot_density(df_numeric)
     plot_scatter(df)
 
+    _, r2_lr_loudness, mse_lr_loudness = linear_regression(df_numeric, 'loudness', 'energy')
+    _, r2_lr, mse_lr = linear_regression(df_numeric, 'loudness', 'popularity')
 
-    X, y, X_train, X_test, y_train, y_test = prepare_model_data(df_numeric)
+    df_encoded = encode_categorical(df)
+    df_tree = df_encoded.select_dtypes(include=[np.number])
 
-# -----------------------------------
-    # CROSS VALIDATION (NEW)
-    # -----------------------------------
+    X, y, X_train, X_test, y_train, y_test = prepare_model_data(df_tree)
+
     evaluate_model_cv(LinearRegression(), X, y, "Linear Regression")
-    
-    model_energy = linear_regression(df_numeric, 'loudness', 'energy')
-    model_popularity = linear_regression(df_numeric, 'loudness', 'popularity')
 
-    #tree_model, r2_tree, mse_tree = train_decision_tree(X_train, X_test, y_train, y_test)
+    tree_model, r2_tree, mse_tree = train_decision_tree(X_train, X_test, y_train, y_test)
 
-    #compare_models(r2_lr, mse_lr, r2_tree, mse_tree)
+    compare_models(r2_lr, mse_lr, r2_tree, mse_tree)
 
-    #plot_feature_importance(tree_model, X)
+    plot_feature_importance(tree_model, X)
 
     print("\n=== SCRIPT FINISHED SUCCESSFULLY ===")
 
