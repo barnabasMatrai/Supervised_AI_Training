@@ -29,16 +29,23 @@ def load_data(path):
 # 2. CLEANING
 # ==========================================
 def prepare_columns(df):
-    drop_columns = ['track_id', 'duration_ms', 'artists', 'album_name', 'track_name', 'time_signature']
+    drop_columns = ['track_id', 'artists', 'album_name', 'track_name', 'time_signature']
     df_reduced = df.drop(columns=drop_columns)
 
     if 'explicit' in df_reduced.columns:
         df_reduced['explicit'] = df_reduced['explicit'].astype(int)
 
+    # Remove tracks with duration longer than 10 minutes (600,000 ms)
+    if 'duration_ms' in df_reduced.columns:
+        df_reduced = df_reduced[df_reduced['duration_ms'] < 600000]
+
     return df_reduced
 
 
 def manage_missing_values(df):
+
+    safe_columns = ['artists', 'album_name', 'track_name']
+
     df = df.replace(['-999', 'missing', 'nan', '?'], np.nan)
 
     missing_values = df.isna().sum()
@@ -50,25 +57,27 @@ def manage_missing_values(df):
 
     initial_rows = len(df)
 
+    critical_columns = [col for col in df.columns if col not in safe_columns]
+
     # Rows that will be deleted
-    deleted_rows = df[df.isna().any(axis=1)]
-    df_cleaned = df.dropna()
+    deleted_rows = df[df[critical_columns].isna().any(axis=1)]
+    df_cleaned = df.dropna(subset=critical_columns)
 
     deleted_count = initial_rows - len(df_cleaned)
-    print(f"Deleted rows: {deleted_count}")
+    print(f"Deleted rows (due to missing critical data): {deleted_count}")
 
     if deleted_count > 0:
         print("\nDeleted rows (showing only missing fields):")
 
         for idx, row in deleted_rows.iterrows():
-            missing_cols = row[row.isna()].index.tolist()
+            missing_cols = [col for col in critical_columns if pd.isna(row[col])]
             missing_info = {col: None for col in missing_cols}
 
             print(f"track_id: {row['track_id']}")
-            print(f"missing: {missing_info}")
+            print(f"missing critical data: {missing_info}")
             print("-" * 40)
     else:
-        print("No rows were deleted.")
+        print("No rows were deleted because critical data is perfectly intact.")
 
     print("-----------------------------------")
 
@@ -82,9 +91,6 @@ def check_duplicates(df):
     if duplicate_count > 0:
         print(f"Warning: Found {duplicate_count} duplicate track IDs.")
         # Keeping the first occurrence and removing the rest
-
-        top_duplicates = df['track_id'].value_counts().head(3)
-        print(f"Most frequent track IDs:\n{top_duplicates}")
 
         most_frequent_id = df['track_id'].value_counts().index[0]
         num_occurrences = df['track_id'].value_counts().iloc[0]
@@ -115,11 +121,23 @@ def check_duplicates(df):
     print("-----------------------------------")
     return df
 
+
 # ==========================================
 # 2b. ENCODING
 # ==========================================
+
 def encode_categorical(df):
     df = df.copy()
+
+    if 'key' in df.columns:
+        key_mapping = {
+            0: 'C', 1: 'C#', 2: 'D', 3: 'D#', 4: 'E', 5: 'F', 
+            6: 'F#', 7: 'G', 8: 'G#', 9: 'A', 10: 'A#', 11: 'B',
+            -1: 'Unknown'
+        }
+        df['key'] = df['key'].map(key_mapping)
+        
+        df = pd.get_dummies(df, columns=['key'], drop_first=True)
 
     if 'track_genre' in df.columns:
         df = pd.get_dummies(df, columns=['track_genre'], drop_first=True)
@@ -159,6 +177,7 @@ def explore_genres(df):
     print(unique_genres)
     print(f"\nTotal unique music genres: {len(unique_genres)}")
 
+
 # ==========================================
 # 5. VISUALIZATION
 # ==========================================
@@ -177,11 +196,42 @@ def plot_correlation(df):
 
 
 def plot_boxplots(df_numeric):
-    print("Generating Boxplot...")
-    plt.figure(figsize=(15, 8))
-    df_numeric.boxplot()
-    plt.xticks(rotation=45)
-    plt.title("Distribution of Numeric Features")
+
+    print("Generating Grouped Boxplots...")
+
+    cols_0_1 = ['danceability', 'energy', 'acousticness', 'instrumentalness', 'liveness', 'valence', 'speechiness']
+    cols_100 = ['popularity', 'tempo']
+    cols_neg = ['loudness']
+    cols_huge = ['duration_ms']
+
+    cols_0_1 = [col for col in cols_0_1 if col in df_numeric.columns]
+    cols_100 = [col for col in cols_100 if col in df_numeric.columns]
+    cols_neg = [col for col in cols_neg if col in df_numeric.columns]
+    cols_huge = [col for col in cols_huge if col in df_numeric.columns]
+
+
+    fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+    axes = axes.flatten()
+
+    if cols_0_1:
+        df_numeric[cols_0_1].boxplot(ax=axes[0])
+        axes[0].tick_params(axis='x', rotation=45)
+        axes[0].set_title("Audio Features (Scale 0 to 1)", fontsize=12)
+
+    if cols_100:
+        df_numeric[cols_100].boxplot(ax=axes[1])
+        axes[1].set_title("Popularity & Tempo (Scale 0-250)", fontsize=12)
+
+    if cols_neg:
+        df_numeric[cols_neg].boxplot(ax=axes[2])
+        axes[2].set_title("Loudness (Negative Scale in dB)", fontsize=12)
+
+    if cols_huge:
+        df_numeric[cols_huge].boxplot(ax=axes[3])
+        axes[3].set_title("4. Duration (Large Scale in ms)", fontsize=12)
+        axes[3].ticklabel_format(style='plain', axis='y')
+
+    plt.suptitle("Distribution of Features Grouped by Scale", fontsize=16, fontweight='bold')
     plt.tight_layout()
     plt.show()
 
@@ -221,16 +271,16 @@ def plot_scatter(df):
     axes[0].set_title('Loudness vs Energy')
     
     # Danceability vs Popularity
-    axes[1].scatter(df['danceability'], df['popularity'], alpha=0.3, color='coral')
-    axes[1].set_xlabel('Danceability')
+    axes[1].scatter(df['loudness'], df['popularity'], alpha=0.3, color='coral')
+    axes[1].set_xlabel('Loudness')
     axes[1].set_ylabel('Popularity')
-    axes[1].set_title('Danceability vs Popularity')
+    axes[1].set_title('Loudness vs Popularity')
     
     # Tempo vs Energy
-    axes[2].scatter(df['tempo'], df['energy'], alpha=0.3, color='mediumseagreen')
-    axes[2].set_xlabel('Tempo')
-    axes[2].set_ylabel('Energy')
-    axes[2].set_title('Tempo vs Energy')
+    axes[2].scatter(df['danceability'], df['popularity'], alpha=0.3, color='mediumseagreen')
+    axes[2].set_xlabel('Danceability')
+    axes[2].set_ylabel('Popularity')
+    axes[2].set_title('Danceabilitylo vs Popularity')
     
     plt.suptitle("Scatter Plots", fontsize=16)
     plt.tight_layout()
@@ -271,7 +321,7 @@ def prepare_model_data(df_numeric):
 # 7. MODELS
 # ==========================================
 
-def linear_regression(df, feature_col, target_col):
+def linear_regression(df, feature_col, target_col, y_min=None, y_max=None):
     print(f"\n--- SIMPLE LINEAR REGRESSION: {feature_col} vs {target_col} ---")
 
     X = df[feature_col].values.reshape(-1, 1)
@@ -293,9 +343,17 @@ def linear_regression(df, feature_col, target_col):
     
     plt.scatter(X_test, y_test, alpha=0.3, color='blue', label='True Values (Test Data)')
     
-    X_line = np.array([[X_test.min()], [X_test.max()]])
-    y_line = model.predict(X_line)
-    plt.plot(X_line, y_line, color='red', linewidth=3, label='Regression Line')
+    X_line = np.linspace(X_test.min(), X_test.max(), 100).reshape(-1, 1)
+    y_line_raw = model.predict(X_line)
+
+    if y_min is not None and y_max is not None:
+        y_line_final = np.clip(y_line_raw, y_min, y_max)
+        label_line = f'Regression Line (Bounded {y_min}-{y_max})'
+    else:
+        y_line_final = y_line_raw 
+        label_line = 'Regression Line'
+
+    plt.plot(X_line, y_line_final, color='red', linewidth=3, label=label_line)
 
     plt.xlabel(feature_col)
     plt.ylabel(target_col
@@ -407,9 +465,6 @@ def main():
 
     print("\nPreparing columns...")
     df = prepare_columns(df)
-    
-    print("\nChecking for missing values after cleaning...")
-    df = manage_missing_values(df)
 
     summary_statistics(df)  
     
@@ -425,8 +480,8 @@ def main():
     plot_density(df_numeric)
     plot_scatter(df)
 
-    _, r2_lr_loudness, mse_lr_loudness = linear_regression(df_numeric, 'loudness', 'energy')
-    _, r2_lr, mse_lr = linear_regression(df_numeric, 'loudness', 'popularity')
+    _, r2_lr_loudness, mse_lr_loudness = linear_regression(df_numeric, 'loudness', 'energy', y_min=0, y_max=1)
+    _, r2_lr, mse_lr = linear_regression(df_numeric, 'loudness', 'popularity', y_min=0, y_max=100)
 
     df_encoded = encode_categorical(df)
     df_tree = df_encoded.select_dtypes(include=[np.number])
