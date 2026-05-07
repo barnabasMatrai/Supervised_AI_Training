@@ -30,7 +30,7 @@ def load_data(path):
 # 2. CLEANING
 # ==========================================
 def prepare_columns(df):
-    drop_columns = ['track_id', 'duration_ms', 'artists', 'album_name', 'track_name']
+    drop_columns = ['track_id', 'duration_ms', 'artists', 'album_name', 'track_name', 'time_signature']
     df_reduced = df.drop(columns=drop_columns)
 
     if 'explicit' in df_reduced.columns:
@@ -433,6 +433,10 @@ def main():
 
     df_numeric = plot_correlation(df)
     plot_boxplots(df_numeric)
+    plot_histograms(df_numeric)
+    plot_density(df_numeric)
+    plot_scatter(df)
+
 
     X, y, X_train, X_test, y_train, y_test = prepare_model_data(df_numeric)
 
@@ -442,7 +446,7 @@ def main():
     evaluate_model_cv(LinearRegression(), X, y, "Linear Regression")
     
     model_energy = linear_regression(df_numeric, 'loudness', 'energy')
-    model_popularity = linear_regression(df_numeric, 'acousticness', 'popularity')
+    model_popularity = linear_regression(df_numeric, 'loudness', 'popularity')
 
     #tree_model, r2_tree, mse_tree = train_decision_tree(X_train, X_test, y_train, y_test)
 
